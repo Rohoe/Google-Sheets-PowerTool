@@ -28,7 +28,6 @@ All server-side logic lives in `Code.gs`. One HTML modal (`Trace.html`) handles 
 - **Format Painter** — `saveNumberFormat()` / `applyNumberFormat()`. Copies number formats between ranges.
 - **Modeling Tools** — `wrapIferror()` (wraps in IFERROR), `flipSign()` (negates values/formulas).
 - **Formula Tracing** — `launchTraceModal()` / `launchDependentsModal()`. Regex-based precedent extraction + TextFinder-based dependent discovery, rendered in `Trace.html` modal with keyboard navigation.
-- **Range Snapshot** — `snapshotRange()`. Server-side pipeline: exports range as PDF via Google's export URL, converts to PNG via Drive thumbnail API, saves to spreadsheet's parent folder.
 - **Navigation History** — `jumpBack()`. Tracks sheet navigation, capped at 20 entries.
 
 ### Data Storage
@@ -43,4 +42,4 @@ User settings persisted via `PropertiesService.getUserProperties()` with keys: `
 
 ### OAuth Scopes
 
-`spreadsheets`, `drive`, `script.external_request`, `script.container.ui` — all declared in `appsscript.json`. Any new feature requiring additional scopes must update the manifest.
+`spreadsheets`, `drive.readonly`, `script.external_request`, `script.container.ui` — all declared in `appsscript.json`. Any new feature requiring additional scopes must update the manifest.

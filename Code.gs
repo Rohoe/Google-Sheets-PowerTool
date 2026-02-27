@@ -41,10 +41,7 @@ function onSheetsHomepage(e) {
     .addButton(CardService.newTextButton().setText("+/- Flip Sign").setOnClickAction(CardService.newAction().setFunctionName("flipSign")))
     .addButton(CardService.newTextButton().setText("IFERROR").setOnClickAction(CardService.newAction().setFunctionName("wrapIferror")));
   
-  var modelSet2 = CardService.newButtonSet()
-    .addButton(CardService.newTextButton().setText("📸 Snapshot Range").setOnClickAction(CardService.newAction().setFunctionName("snapshotRange")));
-
-  modelSection.addWidget(modelSet1).addWidget(modelSet2);
+  modelSection.addWidget(modelSet1);
   builder.addSection(modelSection);
 
   // SECTION 3: ONE-CLICK CYCLES
@@ -461,96 +458,6 @@ function jumpBack() {
   }
 }
 
-// === SNAPSHOT RANGE (SERVER-SIDE PDF → PNG) ===
-
-function snapshotRange() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getActiveSheet();
-  var range = ss.getActiveRange();
-
-  if (!range) return notify("Select a range first.");
-
-  var ssId = ss.getId();
-  var gid = sheet.getSheetId();
-  var token = ScriptApp.getOAuthToken();
-
-  // Range params: r1/c1 are 0-indexed, r2/c2 are 1-indexed (getLastRow/getLastColumn style)
-  var r1 = range.getRow() - 1;
-  var c1 = range.getColumn() - 1;
-  var r2 = range.getLastRow();
-  var c2 = range.getLastColumn();
-
-  // Match gridline visibility
-  var showGridlines = true;
-  if (typeof sheet.isGridlinesVisible === 'function') {
-    showGridlines = sheet.isGridlinesVisible();
-  }
-
-  // Build PDF export URL with zero margins, range-specific, no headers/footers
-  var pdfUrl = "https://docs.google.com/spreadsheets/d/" + ssId + "/export"
-    + "?format=pdf"
-    + "&gid=" + gid
-    + "&r1=" + r1 + "&c1=" + c1 + "&r2=" + r2 + "&c2=" + c2
-    + "&top_margin=0&bottom_margin=0&left_margin=0&right_margin=0"
-    + "&horizontal_alignment=LEFT&vertical_alignment=TOP"
-    + "&gridlines=" + (showGridlines ? "true" : "false")
-    + "&printtitle=false&sheetnames=false&pagenumbers=false"
-    + "&fzr=false&fzc=false"
-    + "&size=LETTER&portrait=true&fitw=true&scale=1";
-
-  // 1. Fetch PDF blob
-  var pdfResponse = UrlFetchApp.fetch(pdfUrl, {
-    headers: { Authorization: "Bearer " + token },
-    muteHttpExceptions: true
-  });
-
-  if (pdfResponse.getResponseCode() !== 200) {
-    return notify("PDF export failed (HTTP " + pdfResponse.getResponseCode() + ").");
-  }
-
-  var pdfBlob = pdfResponse.getBlob().setName("snapshot_temp.pdf");
-
-  // 2. Save PDF to Drive temporarily
-  var tempFile = DriveApp.createFile(pdfBlob);
-
-  try {
-    // 3. Fetch PNG thumbnail from Drive
-    var thumbUrl = "https://drive.google.com/thumbnail?id=" + tempFile.getId() + "&sz=w2000";
-    var pngResponse = UrlFetchApp.fetch(thumbUrl, {
-      headers: { Authorization: "Bearer " + token },
-      muteHttpExceptions: true
-    });
-
-    if (pngResponse.getResponseCode() !== 200) {
-      tempFile.setTrashed(true);
-      return notify("Thumbnail fetch failed (HTTP " + pngResponse.getResponseCode() + ").");
-    }
-
-    // 4. Save PNG to the spreadsheet's parent folder
-    var a1 = range.getA1Notation();
-    var sheetName = sheet.getName();
-    var pngName = "Snapshot_" + sheetName + "_" + a1 + ".png";
-    var pngBlob = pngResponse.getBlob().setName(pngName);
-
-    var parentFolder;
-    var ssFile = DriveApp.getFileById(ssId);
-    var parents = ssFile.getParents();
-    if (parents.hasNext()) {
-      parentFolder = parents.next();
-    } else {
-      parentFolder = DriveApp.getRootFolder();
-    }
-    parentFolder.createFile(pngBlob);
-
-    // 5. Cleanup temp PDF
-    tempFile.setTrashed(true);
-
-    return notify("Snapshot saved: " + pngName);
-  } catch (e) {
-    try { tempFile.setTrashed(true); } catch (err) {}
-    return notify("Snapshot failed: " + e.message);
-  }
-}
 
 // ========================================== 
 //      TRACE PRECEDENTS ENGINE
