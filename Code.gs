@@ -461,102 +461,94 @@ function jumpBack() {
   }
 }
 
-// === SNAPSHOT RANGE (HIGH FIDELITY) ===
+// === SNAPSHOT RANGE (SERVER-SIDE PDF → PNG) ===
 
 function snapshotRange() {
-  var html = HtmlService.createHtmlOutputFromFile('Snapshot')
-      .setWidth(400)
-      .setHeight(200);
-  SpreadsheetApp.getUi().showModelessDialog(html, 'Processing Snapshot...');
-}
-
-function getRangeVisuals() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getActiveSheet();
   var range = ss.getActiveRange();
-  
-  if (!range) return { error: "No range selected." };
-  
+
+  if (!range) return notify("Select a range first.");
+
   var ssId = ss.getId();
-  var tempSheet = ss.insertSheet("Snapshot_Temp_" + Utilities.getUuid());
-  
+  var gid = sheet.getSheetId();
+  var token = ScriptApp.getOAuthToken();
+
+  // Range params: r1/c1 are 0-indexed, r2/c2 are 1-indexed (getLastRow/getLastColumn style)
+  var r1 = range.getRow() - 1;
+  var c1 = range.getColumn() - 1;
+  var r2 = range.getLastRow();
+  var c2 = range.getLastColumn();
+
+  // Match gridline visibility
+  var showGridlines = true;
+  if (typeof sheet.isGridlinesVisible === 'function') {
+    showGridlines = sheet.isGridlinesVisible();
+  }
+
+  // Build PDF export URL with zero margins, range-specific, no headers/footers
+  var pdfUrl = "https://docs.google.com/spreadsheets/d/" + ssId + "/export"
+    + "?format=pdf"
+    + "&gid=" + gid
+    + "&r1=" + r1 + "&c1=" + c1 + "&r2=" + r2 + "&c2=" + c2
+    + "&top_margin=0&bottom_margin=0&left_margin=0&right_margin=0"
+    + "&horizontal_alignment=LEFT&vertical_alignment=TOP"
+    + "&gridlines=" + (showGridlines ? "true" : "false")
+    + "&printtitle=false&sheetnames=false&pagenumbers=false"
+    + "&fzr=false&fzc=false"
+    + "&size=LETTER&portrait=true&fitw=true&scale=1";
+
+  // 1. Fetch PDF blob
+  var pdfResponse = UrlFetchApp.fetch(pdfUrl, {
+    headers: { Authorization: "Bearer " + token },
+    muteHttpExceptions: true
+  });
+
+  if (pdfResponse.getResponseCode() !== 200) {
+    return notify("PDF export failed (HTTP " + pdfResponse.getResponseCode() + ").");
+  }
+
+  var pdfBlob = pdfResponse.getBlob().setName("snapshot_temp.pdf");
+
+  // 2. Save PDF to Drive temporarily
+  var tempFile = DriveApp.createFile(pdfBlob);
+
   try {
-    // 1. Copy Content and Formatting
-    range.copyTo(tempSheet.getRange(1, 1), SpreadsheetApp.CopyPasteType.PASTE_NORMAL, false);
-    range.copyTo(tempSheet.getRange(1, 1), SpreadsheetApp.CopyPasteType.PASTE_COLUMN_WIDTHS, false);
-    
-    // 2. Sync Row Heights (copyTo doesn't handle this)
-    var numRows = range.getNumRows();
-    var startRow = range.getRow();
-    for (var i = 0; i < numRows; i++) {
-      tempSheet.setRowHeight(i + 1, sheet.getRowHeight(startRow + i));
-    }
-    
-    // 3. Export the Temp Sheet
-    var gid = tempSheet.getSheetId();
-    var url = "https://docs.google.com/spreadsheets/d/" + ssId + "/export?format=html&gid=" + gid;
-    
-    var response = UrlFetchApp.fetch(url, {
-      headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() },
+    // 3. Fetch PNG thumbnail from Drive
+    var thumbUrl = "https://drive.google.com/thumbnail?id=" + tempFile.getId() + "&sz=w2000";
+    var pngResponse = UrlFetchApp.fetch(thumbUrl, {
+      headers: { Authorization: "Bearer " + token },
       muteHttpExceptions: true
     });
-    
-    var html = response.getContentText();
-    ss.deleteSheet(tempSheet); // Cleanup early
-    
-    // Extract Style and Body
-    var styleMatch = html.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
-    var bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-    
-    var styleContent = styleMatch ? styleMatch[0] : "";
-    var bodyContent = bodyMatch ? bodyMatch[1] : html;
 
-    // Fallback if body extraction failed
-    if (bodyContent.indexOf('<table') === -1) {
-      var tableMatch = html.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
-      if (tableMatch) bodyContent = tableMatch[0];
-    }
-    
-    var gridVisible = true;
-    if (typeof sheet.isGridlinesVisible === 'function') {
-      gridVisible = sheet.isGridlinesVisible();
+    if (pngResponse.getResponseCode() !== 200) {
+      tempFile.setTrashed(true);
+      return notify("Thumbnail fetch failed (HTTP " + pngResponse.getResponseCode() + ").");
     }
 
-    return { 
-      html: bodyContent, 
-      style: styleContent,
-      hasGridlines: gridVisible
-    };
-  } catch (e) {
-    try { ss.deleteSheet(tempSheet); } catch(err) {}
-    return { error: "Capture Error: " + e.message };
-  }
-}
+    // 4. Save PNG to the spreadsheet's parent folder
+    var a1 = range.getA1Notation();
+    var sheetName = sheet.getName();
+    var pngName = "Snapshot_" + sheetName + "_" + a1 + ".png";
+    var pngBlob = pngResponse.getBlob().setName(pngName);
 
-function saveSnapshot(base64String) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getActiveSheet();
-  var range = ss.getActiveRange();
-  
-  if (!range) throw new Error("Range lost during capture.");
+    var parentFolder;
+    var ssFile = DriveApp.getFileById(ssId);
+    var parents = ssFile.getParents();
+    if (parents.hasNext()) {
+      parentFolder = parents.next();
+    } else {
+      parentFolder = DriveApp.getRootFolder();
+    }
+    parentFolder.createFile(pngBlob);
 
-  try {
-    var data = base64String.split(',')[1] || base64String; 
-    var blob = Utilities.newBlob(Utilities.base64Decode(data), MimeType.PNG, "Snapshot.png");
-    
-    // Position below the bottom-left corner
-    var row = range.getRow() + range.getNumRows() + 1;
-    var col = range.getColumn();
-    
-    // Insert and anchor precisely
-    var img = sheet.insertImage(blob, 1, 1);
-    img.setAnchorCell(sheet.getRange(row, col));
-    
-    SpreadsheetApp.flush();
-    return "Inserted at " + sheet.getRange(row, col).getA1Notation();
+    // 5. Cleanup temp PDF
+    tempFile.setTrashed(true);
+
+    return notify("Snapshot saved: " + pngName);
   } catch (e) {
-    console.error("Save Error: " + e.message);
-    throw new Error("Save Failed: " + e.message);
+    try { tempFile.setTrashed(true); } catch (err) {}
+    return notify("Snapshot failed: " + e.message);
   }
 }
 

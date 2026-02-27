@@ -15,7 +15,7 @@ This is a pure Google Apps Script project — no npm, no local build tools. Code
 
 ## Architecture
 
-All server-side logic lives in `Code.gs` (~764 lines). Two HTML modals (`Trace.html`, `Snapshot.html`) handle interactive UI via `google.script.run` for client-server communication.
+All server-side logic lives in `Code.gs`. One HTML modal (`Trace.html`) handles interactive UI via `google.script.run` for client-server communication.
 
 ### Entry Point
 
@@ -28,7 +28,7 @@ All server-side logic lives in `Code.gs` (~764 lines). Two HTML modals (`Trace.h
 - **Format Painter** — `saveNumberFormat()` / `applyNumberFormat()`. Copies number formats between ranges.
 - **Modeling Tools** — `wrapIferror()` (wraps in IFERROR), `flipSign()` (negates values/formulas).
 - **Formula Tracing** — `launchTraceModal()` / `launchDependentsModal()`. Regex-based precedent extraction + TextFinder-based dependent discovery, rendered in `Trace.html` modal with keyboard navigation.
-- **Range Snapshot** — `snapshotRange()` → `Snapshot.html`. Captures range as PNG via html2canvas (CDN v1.4.1), inserts image below range.
+- **Range Snapshot** — `snapshotRange()`. Server-side pipeline: exports range as PDF via Google's export URL, converts to PNG via Drive thumbnail API, saves to spreadsheet's parent folder.
 - **Navigation History** — `jumpBack()`. Tracks sheet navigation, capped at 20 entries.
 
 ### Data Storage
@@ -38,9 +38,9 @@ User settings persisted via `PropertiesService.getUserProperties()` with keys: `
 ### UI Patterns
 
 - **Sidebar**: CardService card-based UI (not HTML sidebar)
-- **Modals**: HtmlService dialogs for Trace and Snapshot features
+- **Modals**: HtmlService dialog for Trace feature
 - **Notifications**: `CardService.newNotification()` for user feedback
 
 ### OAuth Scopes
 
-`spreadsheets`, `drive.readonly`, `script.external_request`, `script.container.ui` — all declared in `appsscript.json`. Any new feature requiring additional scopes must update the manifest.
+`spreadsheets`, `drive`, `script.external_request`, `script.container.ui` — all declared in `appsscript.json`. Any new feature requiring additional scopes must update the manifest.
