@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style id="google-styles"></style>
+    <style>
+      body { margin: 0; padding: 0; background: #f0f0f0; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; }
+      #status { font-size: 14px; color: #555; display: flex; flex-direction: column; align-items: center; }
+      #spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 24px; height: 24px; animation: spin 2s linear infinite; margin-bottom: 10px; }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      #capture-container { 
+        position: absolute; 
+        top: 0; 
+        left: -5000px; /* Off-screen but NOT hidden */
+        background: white; 
+        display: block;
+      }
+      
+      /* Hide some Google Export artifacts like the title and tab bar */
+      #capture-container table { border-collapse: collapse; }
+      #capture-container .ritz .waffle { margin: 0; border: none; }
+      #capture-container div { overflow: visible !important; }
+    </style>
+  </head>
+  <body>
+    <div id="status">
+      <div id="spinner"></div>
+      <div id="msg">Initializing...</div>
+    </div>
+    
+    <div id="capture-container"></div>
+
+    <script>
+      function report(msg) {
+        document.getElementById('msg').textContent = msg;
+        console.log(msg);
+      }
+
+      window.onload = function() {
+        report("Fetching range data...");
+        google.script.run
+          .withSuccessHandler(startRender)
+          .withFailureHandler(err => report("Fetch Failed: " + err))
+          .getRangeVisuals();
+      };
+
+      function startRender(data) {
+        if (!data) {
+          report("Error: No data received from server.");
+          return;
+        }
+        if (data.error) {
+          report("Server Error: " + data.error);
+          return;
+        }
+
+        report("Preparing visuals...");
+        const container = document.getElementById('capture-container');
+        document.getElementById('google-styles').innerHTML = data.style;
+        container.innerHTML = data.html;
+
+        // Strip gridlines if they were disabled in the sheet
+        if (!data.hasGridlines) {
+          const style = document.createElement('style');
+          style.innerHTML = "td { border: none !important; } .waffle { border: none !important; }";
+          document.head.appendChild(style);
+        }
+
+        // Check if html2canvas is loaded
+        if (typeof html2canvas === 'undefined') {
+          report("Error: html2canvas library not loaded.");
+          return;
+        }
+
+        // Use a slightly longer delay to ensure everything is in the DOM and styles are applied
+        setTimeout(() => {
+          try {
+            // Find the actual table. Google Sheets export uses class 'waffle'
+            let table = container.querySelector('table.waffle') || container.querySelector('table');
+            
+            if (!table) {
+               // Last ditch effort: if container is the table
+               if (container.firstChild && container.firstChild.tagName === 'TABLE') {
+                 table = container.firstChild;
+               }
+            }
+
+            if (!table) {
+              console.log("HTML received:", data.html);
+              throw new Error("Could not find table in export data.");
+            }
+
+            // DYNAMIC SCALE CALCULATION
+            const width = table.offsetWidth || table.clientWidth || 800;
+            const height = table.offsetHeight || table.clientHeight || 400;
+            
+            if (width === 0 || height === 0) {
+              report("Error: Selection has no visible size.");
+              return;
+            }
+
+            const totalPixels = width * height;
+            let scale = 1.5;
+            if (totalPixels * scale * scale > 900000) {
+              scale = Math.floor(Math.sqrt(900000 / totalPixels) * 10) / 10;
+              report("Scaling to " + scale + "x...");
+            }
+
+            html2canvas(table, {
+              backgroundColor: null,
+              scale: scale,
+              useCORS: true,
+              logging: false,
+              width: width,
+              height: height
+            }).then(canvas => {
+              report("Processing image...");
+              const base64 = canvas.toDataURL('image/png');
+              
+              google.script.run
+                .withSuccessHandler((msg) => {
+                   report("✅ " + msg);
+                   setTimeout(() => google.script.host.close(), 1500);
+                })
+                .withFailureHandler(err => report("Save Failed: " + err))
+                .saveSnapshot(base64);
+            }).catch(err => {
+               report("Capture Error: " + err.message);
+            });
+          } catch (e) {
+            report("Execution Error: " + e.message);
+          }
+        }, 1000);
+      }
+    </script>
+  </body>
+</html>

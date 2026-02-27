@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 10px; background: #f1f3f4; overflow: hidden; }
+      #mode-indicator { font-size: 10px; font-weight: bold; color: #1a73e8; margin-bottom: 5px; letter-spacing: 1px; }
+      #formula-box { background: white; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; font-family: monospace; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; min-height: 40px;}
+      .highlight { background-color: #fce8b2; font-weight: bold; padding: 0 2px; border-radius: 2px; }
+      table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+      td { padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; }
+      tr.selected { background-color: #e8f0fe; font-weight: bold; border-left: 4px solid #1a73e8; }
+      .val { text-align: right; color: #0d652d; font-family: monospace; }
+      .instructions { font-size: 10px; color: #888; margin-top: 10px; text-align: center; }
+    </style>
+  </head>
+  <body>
+    <div id="mode-indicator">MODE: LOADING...</div>
+    <div id="formula-box">Initializing...</div>
+    <table id="prec-table"><tbody id="prec-body"></tbody></table>
+    <div class="instructions">&uarr;&darr; Navigate | &rarr; Trace Deep | &larr; Step Back<br>Enter to Finish | Esc to Cancel</div>
+
+    <script>
+      let traceData = null;
+      let selectedIndex = 0;
+      let historyStack = [];
+
+      window.onload = function() {
+        google.script.run.withSuccessHandler(renderUI).getTraceData();
+      };
+
+      function renderUI(data) {
+        if (data.error) {
+          document.getElementById('formula-box').innerText = data.error;
+          document.getElementById('mode-indicator').innerText = "ERROR";
+          return;
+        }
+        traceData = data;
+        document.getElementById('mode-indicator').innerText = "MODE: " + data.mode;
+        document.getElementById('formula-box').innerText = data.formula;
+        
+        const tbody = document.getElementById('prec-body');
+        tbody.innerHTML = "";
+        
+        data.precedents.forEach((prec, i) => {
+          let tr = document.createElement('tr');
+          tr.id = 'row-' + i;
+          
+          let tdRef = document.createElement('td');
+          tdRef.textContent = prec.shortRef;
+          
+          let tdVal = document.createElement('td');
+          tdVal.className = 'val';
+          tdVal.textContent = prec.value;
+          
+          tr.appendChild(tdRef);
+          tr.appendChild(tdVal);
+          
+          tr.onclick = () => selectRow(i);
+          tbody.appendChild(tr);
+        });
+        selectRow(0);
+      }
+
+      function selectRow(index) {
+        const prevRow = document.getElementById('row-' + selectedIndex);
+        if (prevRow) prevRow.classList.remove('selected');
+        selectedIndex = index;
+        const currentRow = document.getElementById('row-' + selectedIndex);
+        if (currentRow) currentRow.classList.add('selected');
+        
+        const target = traceData.precedents[selectedIndex];
+        if (selectedIndex !== 0 && traceData.mode === 'Precedents') {
+          highlightInBox(target.shortRef);
+        } else {
+          document.getElementById('formula-box').innerText = traceData.formula;
+        }
+        google.script.run.goToPrecedent({ "targetA1": target.fullRef });
+      }
+
+      function highlightInBox(ref) {
+        const formula = traceData.formula;
+        const escaped = ref.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+        const regex = new RegExp("(" + escaped + ")", "gi");
+        document.getElementById('formula-box').innerHTML = formula.replace(regex, '<span class="highlight">$1</span>');
+      }
+
+      function goBack() {
+        if (historyStack.length > 0) {
+          const lastRef = historyStack.pop();
+          google.script.run.withSuccessHandler(renderUI).getDeepTraceData(lastRef);
+        } else {
+          selectRow(0); // If no history, just go to current top of list
+        }
+      }
+
+      function goDeep() {
+        // Save the current home reference to the stack before we dive in
+        const currentHome = traceData.precedents[0].fullRef;
+        historyStack.push(currentHome);
+        const target = traceData.precedents[selectedIndex].fullRef;
+        google.script.run.withSuccessHandler(renderUI).getDeepTraceData(target);
+      }
+
+      document.addEventListener('keydown', function(e) {
+        if (!traceData) return;
+        if (e.key === 'ArrowDown' && selectedIndex < traceData.precedents.length - 1) {
+          e.preventDefault(); selectRow(selectedIndex + 1);
+        } else if (e.key === 'ArrowUp' && selectedIndex > 0) {
+          e.preventDefault(); selectRow(selectedIndex - 1);
+        } else if (e.key === 'ArrowRight' && selectedIndex !== 0) {
+          e.preventDefault(); goDeep();
+        } else if (e.key === 'ArrowLeft') {
+          e.preventDefault(); goBack();
+        } else if (e.key === 'Enter' || e.key === 'Escape') {
+          google.script.host.close();
+        }
+      });
+    </script>
+  </body>
+</html>
