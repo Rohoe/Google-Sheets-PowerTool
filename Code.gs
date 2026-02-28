@@ -69,12 +69,16 @@ function onSheetsHomepage(e) {
   actionSection.addWidget(actionSet1).addWidget(actionSet2);
   builder.addSection(actionSection);
 
-  // SECTION 4: FORMAT PAINTER (Full)
+  // SECTION 4: FORMAT PAINTER
   var painterSection = CardService.newCardSection().setHeader("Format Painter");
-  var numFormatSet = CardService.newButtonSet()
-    .addButton(CardService.newTextButton().setText("Save").setOnClickAction(CardService.newAction().setFunctionName("saveFullFormat")))
-    .addButton(CardService.newTextButton().setText("Apply").setOnClickAction(CardService.newAction().setFunctionName("applyFullFormat")));
-  painterSection.addWidget(numFormatSet);
+  var painterSaveSet = CardService.newButtonSet()
+    .addButton(CardService.newTextButton().setText("Save Format").setOnClickAction(CardService.newAction().setFunctionName("saveFullFormat")));
+  var painterApplySet = CardService.newButtonSet()
+    .addButton(CardService.newTextButton().setText("All").setOnClickAction(CardService.newAction().setFunctionName("applyFormatAll")))
+    .addButton(CardService.newTextButton().setText("#").setOnClickAction(CardService.newAction().setFunctionName("applyFormatNumber")))
+    .addButton(CardService.newTextButton().setText("Font").setOnClickAction(CardService.newAction().setFunctionName("applyFormatFont")))
+    .addButton(CardService.newTextButton().setText("Fill").setOnClickAction(CardService.newAction().setFunctionName("applyFormatFill")));
+  painterSection.addWidget(painterSaveSet).addWidget(painterApplySet);
   builder.addSection(painterSection);
 
   // SECTION 5: CYCLE SETTINGS CONTROLS
@@ -235,24 +239,65 @@ function saveFullFormat(e) {
   return notify('Full format saved!');
 }
 
-function applyFullFormat(e) {
+function getSavedFormat() {
   var saved = PropertiesService.getUserProperties().getProperty('saved_full_format');
-  if (!saved) return notify('Save a format first.');
+  if (!saved) return null;
+  return JSON.parse(saved);
+}
 
-  var fmt = JSON.parse(saved);
-  var sheet = SpreadsheetApp.getActiveSpreadsheet();
-  var range = sheet.getActiveRange();
+function getTargetRange() {
+  var range = SpreadsheetApp.getActiveSpreadsheet().getActiveRange();
+  return range || null;
+}
+
+function applyFormatAll() {
+  var fmt = getSavedFormat();
+  if (!fmt) return notify('Save a format first.');
+  var range = getTargetRange();
   if (!range) return notify('Select cells to format.');
 
   if (fmt.numberFormat) range.setNumberFormat(fmt.numberFormat);
   if (fmt.fontColor) range.setFontColor(fmt.fontColor);
-  if (fmt.background) range.setBackground(fmt.background);
   if (fmt.fontWeight) range.setFontWeight(fmt.fontWeight);
   if (fmt.fontStyle) range.setFontStyle(fmt.fontStyle);
   if (fmt.fontFamily) range.setFontFamily(fmt.fontFamily);
   if (fmt.fontSize) range.setFontSize(fmt.fontSize);
+  if (fmt.background) range.setBackground(fmt.background);
+  return notify('All formats applied!');
+}
 
-  return notify('Full format applied!');
+function applyFormatNumber() {
+  var fmt = getSavedFormat();
+  if (!fmt) return notify('Save a format first.');
+  var range = getTargetRange();
+  if (!range) return notify('Select cells to format.');
+
+  if (fmt.numberFormat) range.setNumberFormat(fmt.numberFormat);
+  return notify('Number format applied!');
+}
+
+function applyFormatFont() {
+  var fmt = getSavedFormat();
+  if (!fmt) return notify('Save a format first.');
+  var range = getTargetRange();
+  if (!range) return notify('Select cells to format.');
+
+  if (fmt.fontColor) range.setFontColor(fmt.fontColor);
+  if (fmt.fontWeight) range.setFontWeight(fmt.fontWeight);
+  if (fmt.fontStyle) range.setFontStyle(fmt.fontStyle);
+  if (fmt.fontFamily) range.setFontFamily(fmt.fontFamily);
+  if (fmt.fontSize) range.setFontSize(fmt.fontSize);
+  return notify('Font format applied!');
+}
+
+function applyFormatFill() {
+  var fmt = getSavedFormat();
+  if (!fmt) return notify('Save a format first.');
+  var range = getTargetRange();
+  if (!range) return notify('Select cells to format.');
+
+  if (fmt.background) range.setBackground(fmt.background);
+  return notify('Fill color applied!');
 }
 
 // ========================================== 
@@ -407,7 +452,12 @@ function flipSign() {
       var f = formulas[i][j];
       var v = values[i][j];
       if (f && f.startsWith('=')) {
-        row.push("=-1*(" + f.substring(1) + ")");
+        var unwrapMatch = f.match(/^=-1\*\((.+)\)$/);
+        if (unwrapMatch) {
+          row.push("=" + unwrapMatch[1]);
+        } else {
+          row.push("=-1*(" + f.substring(1) + ")");
+        }
       } else if (typeof v === 'number') {
         row.push(v * -1);
       } else {

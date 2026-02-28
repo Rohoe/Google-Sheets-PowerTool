@@ -17,10 +17,14 @@
       #loading-overlay.active { display: flex; }
       .spinner { width: 24px; height: 24px; border: 3px solid #ddd; border-top-color: #1a73e8; border-radius: 50%; animation: spin 0.6s linear infinite; }
       @keyframes spin { to { transform: rotate(360deg); } }
+      #focus-prompt { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(241,243,244,0.5); z-index: 5; justify-content: center; align-items: center; cursor: pointer; }
+      #focus-prompt.active { display: flex; }
+      #focus-prompt span { background: white; padding: 8px 16px; border-radius: 6px; font-size: 12px; color: #555; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
     </style>
   </head>
   <body>
     <div id="loading-overlay" class="active"><div class="spinner"></div></div>
+    <div id="focus-prompt"><span>Click here to enable keyboard navigation</span></div>
     <div id="mode-indicator">MODE: LOADING...</div>
     <div id="formula-box">Initializing...</div>
     <table id="prec-table"><tbody id="prec-body"></tbody></table>
@@ -31,9 +35,16 @@
       let selectedIndex = 0;
       let historyStack = [];
       const overlay = document.getElementById('loading-overlay');
+      const focusPrompt = document.getElementById('focus-prompt');
+      let activated = false;
 
       function showLoading() { overlay.classList.add('active'); }
       function hideLoading() { overlay.classList.remove('active'); }
+
+      focusPrompt.addEventListener('click', function() {
+        focusPrompt.classList.remove('active');
+        activated = true;
+      });
 
       window.onload = function() {
         google.script.run.withSuccessHandler(renderUI).getTraceData();
@@ -41,6 +52,7 @@
 
       function renderUI(data) {
         hideLoading();
+        if (!activated) focusPrompt.classList.add('active');
         if (data.error) {
           document.getElementById('formula-box').innerText = data.error;
           document.getElementById('mode-indicator').innerText = "ERROR";
