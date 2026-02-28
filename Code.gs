@@ -38,13 +38,6 @@ function onSheetsHomepage(e) {
   auditSection.addWidget(auditSet1).addWidget(auditSet2);
   builder.addSection(auditSection);
 
-  // SECTION 2: MODEL FORMATTING
-  var autoSection = CardService.newCardSection().setHeader("Model Formatting");
-  autoSection.addWidget(CardService.newTextButton()
-    .setText("🎨 Auto Color Sheet")
-    .setOnClickAction(CardService.newAction().setFunctionName("autoColorSheet")));
-  builder.addSection(autoSection);
-
   // SECTION 2: MODELING TOOLS
   var modelSection = CardService.newCardSection().setHeader("Modeling Tools");
   var modelSet1 = CardService.newButtonSet()
@@ -54,23 +47,26 @@ function onSheetsHomepage(e) {
   modelSection.addWidget(modelSet1);
   builder.addSection(modelSection);
 
-  // SECTION 3: ONE-CLICK CYCLES
+  // SECTION 3: FORMAT CYCLES (includes Auto Color)
   var actionSection = CardService.newCardSection().setHeader("Format Cycles");
-  
+
   var actionSet1 = CardService.newButtonSet()
     .addButton(CardService.newTextButton().setText("Fill").setOnClickAction(CardService.newAction().setFunctionName("cycleFill")))
     .addButton(CardService.newTextButton().setText("Font").setOnClickAction(CardService.newAction().setFunctionName("cycleFont")));
-    
+
   var actionSet2 = CardService.newButtonSet()
     .addButton(CardService.newTextButton().setText("Number").setOnClickAction(CardService.newAction().setFunctionName("cycleNumber")))
     .addButton(CardService.newTextButton().setText("$").setOnClickAction(CardService.newAction().setFunctionName("cycleCurrency")))
     .addButton(CardService.newTextButton().setText("%").setOnClickAction(CardService.newAction().setFunctionName("cyclePercent")));
-    
-  actionSection.addWidget(actionSet1).addWidget(actionSet2);
+
+  var actionSet3 = CardService.newButtonSet()
+    .addButton(CardService.newTextButton().setText("🎨 Auto Color Sheet").setOnClickAction(CardService.newAction().setFunctionName("autoColorSheet")));
+
+  actionSection.addWidget(actionSet1).addWidget(actionSet2).addWidget(actionSet3);
   builder.addSection(actionSection);
 
-  // SECTION 4: FORMAT PAINTER
-  var painterSection = CardService.newCardSection().setHeader("Format Painter");
+  // SECTION 4: FORMAT PAINTER (collapsible)
+  var painterSection = CardService.newCardSection().setHeader("Format Painter").setCollapsible(true).setNumUncollapsibleWidgets(0);
   var painterSaveSet = CardService.newButtonSet()
     .addButton(CardService.newTextButton().setText("Save Format").setOnClickAction(CardService.newAction().setFunctionName("saveFullFormat")));
   var painterApplySet = CardService.newButtonSet()
@@ -80,18 +76,6 @@ function onSheetsHomepage(e) {
     .addButton(CardService.newTextButton().setText("Fill").setOnClickAction(CardService.newAction().setFunctionName("applyFormatFill")));
   painterSection.addWidget(painterSaveSet).addWidget(painterApplySet);
   builder.addSection(painterSection);
-
-  // SECTION 5: CYCLE SETTINGS CONTROLS
-  var settingsCtrl = CardService.newCardSection().setHeader("⚙️ Cycle Settings");
-  var settingsBtns = CardService.newButtonSet()
-    .addButton(CardService.newTextButton()
-      .setText("💾 Save Settings")
-      .setOnClickAction(CardService.newAction().setFunctionName("saveSettings")))
-    .addButton(CardService.newTextButton()
-      .setText("🔄 Reset All")
-      .setOnClickAction(CardService.newAction().setFunctionName("resetSettings")));
-  settingsCtrl.addWidget(settingsBtns);
-  builder.addSection(settingsCtrl);
 
   // Helper function to extract array of 4 formats
   function getArr(key, defaultStr) {
@@ -104,35 +88,44 @@ function onSheetsHomepage(e) {
   // Helper to build smart-collapsing sections that hide empty buttons
   function buildConfigSection(title, keyPrefix, arr, testType) {
     var sec = CardService.newCardSection().setHeader(title).setCollapsible(true);
-    
+
+    var hints = {
+      'number': 'e.g. #,##0.00',
+      'fill': 'e.g. #F2F2F2',
+      'font': 'e.g. #0000ff'
+    };
+    var hint = hints[testType] || '';
+
     var btnSet = CardService.newButtonSet();
     var filledCount = 0;
-    
+
     for (var i = 0; i < 4; i++) {
       if (arr[i] !== "") {
         btnSet.addButton(CardService.newTextButton()
           .setText(String(i+1))
+          .setAltText("Apply format " + (i+1) + " to selected cell")
           .setOnClickAction(CardService.newAction()
             .setFunctionName("testFormat")
             .setParameters({"key": keyPrefix + (i+1), "type": testType})));
         filledCount++;
       }
     }
-    
+
     if (filledCount > 0) {
       sec.addWidget(btnSet);
     }
-    
+
     for (var i = 0; i < 4; i++) {
       sec.addWidget(CardService.newTextInput()
         .setFieldName(keyPrefix + (i+1))
         .setTitle("Format " + (i+1))
-        .setValue(arr[i]));
+        .setValue(arr[i])
+        .setHint(hint));
     }
-    
+
     var visibleWidgets = filledCount > 0 ? (1 + filledCount) : 1;
     sec.setNumUncollapsibleWidgets(visibleWidgets);
-    
+
     return sec;
   }
 
@@ -141,6 +134,18 @@ function onSheetsHomepage(e) {
   builder.addSection(buildConfigSection("Percent Formats", "c_per", getArr('c_per', defPer), 'number'));
   builder.addSection(buildConfigSection("Fill Colors", "c_fill", getArr('c_fill', defFill), 'fill'));
   builder.addSection(buildConfigSection("Font Colors", "c_font", getArr('c_font', defFont), 'font'));
+
+  // CYCLE SETTINGS CONTROLS (at the bottom, after all config sections)
+  var settingsCtrl = CardService.newCardSection().setHeader("⚙️ Cycle Settings");
+  var settingsBtns = CardService.newButtonSet()
+    .addButton(CardService.newTextButton()
+      .setText("💾 Save Settings")
+      .setOnClickAction(CardService.newAction().setFunctionName("saveSettings")))
+    .addButton(CardService.newTextButton()
+      .setText("🔄 Reset All")
+      .setOnClickAction(CardService.newAction().setFunctionName("resetSettings")));
+  settingsCtrl.addWidget(settingsBtns);
+  builder.addSection(settingsCtrl);
 
   return builder.build();
 }
