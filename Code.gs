@@ -29,11 +29,11 @@ function onSheetsHomepage(e) {
   // SECTION 1: FORMULA AUDITING
   var auditSection = CardService.newCardSection().setHeader("Formula Auditing");
   var auditSet1 = CardService.newButtonSet()
-    .addButton(CardService.newTextButton().setText("🔍 Precedents").setOnClickAction(CardService.newAction().setFunctionName("launchTraceModal")))
-    .addButton(CardService.newTextButton().setText("🎯 Dependents").setOnClickAction(CardService.newAction().setFunctionName("launchDependentsModal")));
+    .addButton(CardService.newTextButton().setText("Trace Precedents").setOnClickAction(CardService.newAction().setFunctionName("launchTraceModal")))
+    .addButton(CardService.newTextButton().setText("Trace Dependents").setOnClickAction(CardService.newAction().setFunctionName("launchDependentsModal")));
   
   var auditSet2 = CardService.newButtonSet()
-    .addButton(CardService.newTextButton().setText("⬅ Jump Back").setOnClickAction(CardService.newAction().setFunctionName("jumpBack")));
+    .addButton(CardService.newTextButton().setText("Jump Back").setOnClickAction(CardService.newAction().setFunctionName("jumpBack")));
 
   auditSection.addWidget(auditSet1).addWidget(auditSet2);
   builder.addSection(auditSection);
@@ -60,7 +60,7 @@ function onSheetsHomepage(e) {
     .addButton(CardService.newTextButton().setText("%").setOnClickAction(CardService.newAction().setFunctionName("cyclePercent")));
 
   var actionSet3 = CardService.newButtonSet()
-    .addButton(CardService.newTextButton().setText("🎨 Auto Color Sheet").setOnClickAction(CardService.newAction().setFunctionName("autoColorSheet")));
+    .addButton(CardService.newTextButton().setText("Auto Color Sheet").setOnClickAction(CardService.newAction().setFunctionName("autoColorSheet")));
 
   actionSection.addWidget(actionSet1).addWidget(actionSet2).addWidget(actionSet3);
   builder.addSection(actionSection);
@@ -136,13 +136,13 @@ function onSheetsHomepage(e) {
   builder.addSection(buildConfigSection("Font Colors", "c_font", getArr('c_font', defFont), 'font'));
 
   // CYCLE SETTINGS CONTROLS (at the bottom, after all config sections)
-  var settingsCtrl = CardService.newCardSection().setHeader("⚙️ Cycle Settings");
+  var settingsCtrl = CardService.newCardSection().setHeader("Cycle Settings");
   var settingsBtns = CardService.newButtonSet()
     .addButton(CardService.newTextButton()
-      .setText("💾 Save Settings")
+      .setText("Save Settings")
       .setOnClickAction(CardService.newAction().setFunctionName("saveSettings")))
     .addButton(CardService.newTextButton()
-      .setText("🔄 Reset All")
+      .setText("Reset All")
       .setOnClickAction(CardService.newAction().setFunctionName("resetSettings")));
   settingsCtrl.addWidget(settingsBtns);
   builder.addSection(settingsCtrl);
