@@ -1,20 +1,30 @@
 // ==========================================
+//      DEFAULT FORMAT CONSTANTS
+// ==========================================
+var DEFAULTS = {
+  c_fill: '#F2F2F2 | #ECF7FE | #E2E0FF | #5F59FF',
+  c_font: '#000000 | #0000ff | #008000',
+  c_num:  '_(#,##0_);(#,##0);_("–")_;_(@_) | _(#,##0.0_);(#,##0.0);_("–")_;_(@_)',
+  c_cur:  '_($#,##0_);($#,##0);_("–")_;_(@_) | _($#,##0.0_);($#,##0.0);_("–")_;_(@_)',
+  c_per:  '_(#,##0%_);(#,##0%);_("–"_)_%;_(@_)_% | _(#,##0.0%_);(#,##0.0%);_("–"_)_%;_(@_)_%'
+};
+
+// ==========================================
 //      BUILD THE SIDEBAR UI
-// ========================================== 
+// ==========================================
 function onHomepage(e) {
-  return onSheetsHomepage(e); 
+  return onSheetsHomepage(e);
 }
 
 function onSheetsHomepage(e) {
   var builder = CardService.newCardBuilder();
   var props = PropertiesService.getUserProperties();
 
-  // Updated defaults
-  var defFill = props.getProperty('c_fill') || '#F2F2F2 | #ECF7FE | #E2E0FF | #5F59FF'; 
-  var defFont = props.getProperty('c_font') || '#000000 | #0000ff | #008000'; 
-  var defNum  = props.getProperty('c_num')  || '_(#,##0_);(#,##0);_("–")_;_(@_) | _(#,##0.0_);(#,##0.0);_("–")_;_(@_)';
-  var defCur  = props.getProperty('c_cur')  || '_($#,##0_);($#,##0);_("–")_;_(@_) | _($#,##0.0_);($#,##0.0);_("–")_;_(@_)';
-  var defPer  = props.getProperty('c_per')  || '_(#,##0%_);(#,##0%);_("–"_)_%;_(@_)_% | _(#,##0.0%_);(#,##0.0%);_("–"_)_%;_(@_)_%';
+  var defFill = props.getProperty('c_fill') || DEFAULTS.c_fill;
+  var defFont = props.getProperty('c_font') || DEFAULTS.c_font;
+  var defNum  = props.getProperty('c_num')  || DEFAULTS.c_num;
+  var defCur  = props.getProperty('c_cur')  || DEFAULTS.c_cur;
+  var defPer  = props.getProperty('c_per')  || DEFAULTS.c_per;
 
   // SECTION 1: FORMULA AUDITING
   var auditSection = CardService.newCardSection().setHeader("Formula Auditing");
@@ -39,8 +49,8 @@ function onSheetsHomepage(e) {
   var modelSection = CardService.newCardSection().setHeader("Modeling Tools");
   var modelSet1 = CardService.newButtonSet()
     .addButton(CardService.newTextButton().setText("+/- Flip Sign").setOnClickAction(CardService.newAction().setFunctionName("flipSign")))
-    .addButton(CardService.newTextButton().setText("IFERROR").setOnClickAction(CardService.newAction().setFunctionName("wrapIferror")));
-  
+    .addButton(CardService.newTextButton().setText("IFERROR").setOnClickAction(CardService.newAction().setFunctionName("toggleIferror")));
+
   modelSection.addWidget(modelSet1);
   builder.addSection(modelSection);
 
@@ -59,11 +69,11 @@ function onSheetsHomepage(e) {
   actionSection.addWidget(actionSet1).addWidget(actionSet2);
   builder.addSection(actionSection);
 
-  // SECTION 4: NUMBER FORMAT PAINTER
-  var painterSection = CardService.newCardSection().setHeader("Number Format Painter");
+  // SECTION 4: FORMAT PAINTER (Full)
+  var painterSection = CardService.newCardSection().setHeader("Format Painter");
   var numFormatSet = CardService.newButtonSet()
-    .addButton(CardService.newTextButton().setText("Save").setOnClickAction(CardService.newAction().setFunctionName("saveNumberFormat")))
-    .addButton(CardService.newTextButton().setText("Apply").setOnClickAction(CardService.newAction().setFunctionName("applyNumberFormat")));
+    .addButton(CardService.newTextButton().setText("Save").setOnClickAction(CardService.newAction().setFunctionName("saveFullFormat")))
+    .addButton(CardService.newTextButton().setText("Apply").setOnClickAction(CardService.newAction().setFunctionName("applyFullFormat")));
   painterSection.addWidget(numFormatSet);
   builder.addSection(painterSection);
 
@@ -201,31 +211,48 @@ function testFormat(e) {
   }
 }
 
-// ========================================== 
-//      TARGETED FORMAT PAINTER
-// ========================================== 
+// ==========================================
+//      FULL FORMAT PAINTER
+// ==========================================
 
-function saveNumberFormat(e) {
+function saveFullFormat(e) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet();
-  var range = sheet.getActiveRange();
-  if (!range) return notify('Select a cell first.');
-  
-  var format = range.getNumberFormat();
-  PropertiesService.getUserProperties().setProperty('saved_number_format', format);
-  
-  return notify('Number format saved!');
+  var cell = sheet.getActiveRange();
+  if (!cell) return notify('Select a cell first.');
+
+  var topLeft = cell.getCell(1, 1);
+  var fmt = {
+    numberFormat: topLeft.getNumberFormat(),
+    fontColor: topLeft.getFontColor(),
+    background: topLeft.getBackground(),
+    fontWeight: topLeft.getFontWeight(),
+    fontStyle: topLeft.getFontStyle(),
+    fontFamily: topLeft.getFontFamily(),
+    fontSize: topLeft.getFontSize()
+  };
+
+  PropertiesService.getUserProperties().setProperty('saved_full_format', JSON.stringify(fmt));
+  return notify('Full format saved!');
 }
 
-function applyNumberFormat(e) {
-  var savedFormat = PropertiesService.getUserProperties().getProperty('saved_number_format');
-  if (!savedFormat) return notify('Save a number format first.');
-  
+function applyFullFormat(e) {
+  var saved = PropertiesService.getUserProperties().getProperty('saved_full_format');
+  if (!saved) return notify('Save a format first.');
+
+  var fmt = JSON.parse(saved);
   var sheet = SpreadsheetApp.getActiveSpreadsheet();
   var range = sheet.getActiveRange();
   if (!range) return notify('Select cells to format.');
-  
-  range.setNumberFormat(savedFormat);
-  return notify('Number format applied!');
+
+  if (fmt.numberFormat) range.setNumberFormat(fmt.numberFormat);
+  if (fmt.fontColor) range.setFontColor(fmt.fontColor);
+  if (fmt.background) range.setBackground(fmt.background);
+  if (fmt.fontWeight) range.setFontWeight(fmt.fontWeight);
+  if (fmt.fontStyle) range.setFontStyle(fmt.fontStyle);
+  if (fmt.fontFamily) range.setFontFamily(fmt.fontFamily);
+  if (fmt.fontSize) range.setFontSize(fmt.fontSize);
+
+  return notify('Full format applied!');
 }
 
 // ========================================== 
@@ -252,7 +279,7 @@ function autoColorSheet() {
       var color = currentColors[r][c]; 
       
       if (formula) {
-        if (formula.toUpperCase().indexOf('IMPORTRANGE') !== -1) {
+        if (/importrange/i.test(formula)) {
           color = '#800080'; // Purple
         } else if (formula.indexOf('!') !== -1) {
           color = '#008000'; // Green
@@ -303,27 +330,27 @@ function applyCycle(cycleStr, type) {
 }
 
 function cycleFill() {
-  var str = PropertiesService.getUserProperties().getProperty('c_fill') || '#F2F2F2 | #ECF7FE | #E2E0FF | #5F59FF';
+  var str = PropertiesService.getUserProperties().getProperty('c_fill') || DEFAULTS.c_fill;
   applyCycle(str, 'fill');
 }
 
 function cycleFont() {
-  var str = PropertiesService.getUserProperties().getProperty('c_font') || '#000000 | #0000ff | #008000';
+  var str = PropertiesService.getUserProperties().getProperty('c_font') || DEFAULTS.c_font;
   applyCycle(str, 'font');
 }
 
 function cycleNumber() {
-  var str = PropertiesService.getUserProperties().getProperty('c_num') || '_(#,##0_);(#,##0);_("–")_;_(@_) | _(#,##0.0_);(#,##0.0);_("–")_;_(@_)';
+  var str = PropertiesService.getUserProperties().getProperty('c_num') || DEFAULTS.c_num;
   applyCycle(str, 'number');
 }
 
 function cycleCurrency() {
-  var str = PropertiesService.getUserProperties().getProperty('c_cur') || '_($#,##0_);($#,##0);_("–")_;_(@_) | _($#,##0.0_);($#,##0.0);_("–")_;_(@_)';
+  var str = PropertiesService.getUserProperties().getProperty('c_cur') || DEFAULTS.c_cur;
   applyCycle(str, 'number');
 }
 
 function cyclePercent() {
-  var str = PropertiesService.getUserProperties().getProperty('c_per') || '_(#,##0%_);(#,##0%);_("–"_)_%;_(@_)_% | _(#,##0.0%_);(#,##0.0%);_("–"_)_%;_(@_)_%';
+  var str = PropertiesService.getUserProperties().getProperty('c_per') || DEFAULTS.c_per;
   applyCycle(str, 'number');
 }
 
@@ -331,30 +358,38 @@ function cyclePercent() {
 //      MODELING TOOLS ENGINE
 // ========================================== 
 
-function wrapIferror() {
+function toggleIferror() {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   var range = sheet.getActiveRange();
   if (!range) return notify("Select a range.");
-  
+
   var formulas = range.getFormulas();
-  var hasFormula = false;
-  
+  var wrapped = 0;
+  var unwrapped = 0;
+  var iferrorRegex = /^=IFERROR\((.+),\s*""\)$/i;
+
   for (var i = 0; i < formulas.length; i++) {
     for (var j = 0; j < formulas[i].length; j++) {
       var f = formulas[i][j];
-      if (f && f.startsWith('=') && f.toUpperCase().indexOf('IFERROR') === -1) {
+      if (!f || !f.startsWith('=')) continue;
+
+      var match = f.match(iferrorRegex);
+      if (match) {
+        formulas[i][j] = "=" + match[1];
+        unwrapped++;
+      } else if (!/^=IFERROR\(/i.test(f)) {
         formulas[i][j] = "=IFERROR(" + f.substring(1) + ", \"\")";
-        hasFormula = true;
+        wrapped++;
       }
     }
   }
-  
-  if (hasFormula) {
-    range.setFormulas(formulas);
-    return notify("Formulas wrapped in IFERROR.");
-  } else {
-    return notify("No suitable formulas found.");
-  }
+
+  if (wrapped + unwrapped === 0) return notify("No suitable formulas found.");
+
+  range.setFormulas(formulas);
+  if (wrapped > 0 && unwrapped > 0) return notify("Wrapped " + wrapped + ", unwrapped " + unwrapped + ".");
+  if (unwrapped > 0) return notify("IFERROR removed from " + unwrapped + " formula" + (unwrapped > 1 ? "s" : "") + ".");
+  return notify("IFERROR added to " + wrapped + " formula" + (wrapped > 1 ? "s" : "") + ".");
 }
 
 function flipSign() {
@@ -364,57 +399,25 @@ function flipSign() {
   
   var formulas = range.getFormulas();
   var values = range.getValues();
-  var newValues = [];
-  var newFormulas = [];
-  
-  for (var i = 0; i < values.length; i++) {
-    var rVal = [];
-    var rForm = [];
-    for (var j = 0; j < values[i].length; j++) {
-      var f = formulas[i][j];
-      var v = values[i][j];
-      
-      if (f && f.startsWith('=')) {
-        // Wrap formula
-        rForm.push("=-1*(" + f.substring(1) + ")");
-        rVal.push(null); 
-      } else if (typeof v === 'number') {
-        // Flip number
-        rVal.push(v * -1);
-        rForm.push(null);
-      } else {
-        // Keep as is
-        rVal.push(v);
-        rForm.push(f);
-      }
-    }
-    newValues.push(rVal);
-    newFormulas.push(rForm);
-  }
-  
-  // Apply changes. We must do formulas first, or values will overwrite.
-  // Actually, standard practice is: if it's a formula, use setFormulas. If value, use setValues.
-  // We can't mix easily in one batch call if they are mixed in the range without being careful.
-  // But setValues() overwrites formulas. setFormulas() overwrites values.
-  
-  // Safe approach: Iterate and set individually? Too slow.
-  // Better: Create a 2D array of mixed content? No, API has setValues (for values) and setFormulas (for strings).
-  // If we pass a string starting with '=' to setValues, it effectively sets a formula.
-  
   var finalOutput = [];
+
   for (var i = 0; i < values.length; i++) {
     var row = [];
     for (var j = 0; j < values[i].length; j++) {
-      if (newFormulas[i][j]) {
-        row.push(newFormulas[i][j]);
+      var f = formulas[i][j];
+      var v = values[i][j];
+      if (f && f.startsWith('=')) {
+        row.push("=-1*(" + f.substring(1) + ")");
+      } else if (typeof v === 'number') {
+        row.push(v * -1);
       } else {
-        row.push(newValues[i][j]);
+        row.push(v);
       }
     }
     finalOutput.push(row);
   }
-  
-  range.setValues(finalOutput); // setValues handles formulas if they are strings starting with =
+
+  range.setValues(finalOutput);
   return notify("Signs flipped.");
 }
 
@@ -475,20 +478,17 @@ function extractPrecedents(formula) {
     precedents = precedents.concat(a1Matches);
   }
 
-  // 2. Named Ranges (Heuristic)
+  // 2. Named Ranges (pre-fetch all names once instead of per-token API calls)
   var tokens = formula.split(/[^a-zA-Z0-9_.]+/);
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  
+  var namedRangeNames = ss.getNamedRanges().map(function(nr) { return nr.getName(); });
+
   tokens.forEach(function(token) {
-    if (!token || /^[0-9]+$/.test(token)) return; // Skip numbers
-    if (a1Regex.test(token)) return; // Skip things that look like A1
-    
-    // Optimization: Only check valid-looking names to save API calls
-    if (token.length > 2) { 
-      var range = ss.getRangeByName(token);
-      if (range) {
-        precedents.push(token);
-      }
+    if (!token || /^[0-9]+$/.test(token)) return;
+    if (a1Regex.test(token)) return;
+
+    if (token.length > 2 && namedRangeNames.indexOf(token) !== -1) {
+      precedents.push(token);
     }
   });
 
@@ -546,10 +546,12 @@ function getTraceData(targetA1) {
     var precedents = extractPrecedents(formula);
     precedents.forEach(function(target) {
       var fullRef = target.indexOf('!') === -1 ? "'" + sheetName + "'!" + target : target;
-      results.push({ 
-        shortRef: target, 
-        fullRef: fullRef, 
-        value: getVal(ss, fullRef) 
+      var info = getCellInfo(ss, fullRef);
+      results.push({
+        shortRef: target,
+        fullRef: fullRef,
+        value: info.value,
+        cellFormula: info.formula
       });
     });
     return { formula: formula, precedents: results, mode: 'Precedents' };
@@ -646,7 +648,8 @@ function findDependents(ss, targetCell, results) {
        results.push({
         shortRef: range.getSheet().getName() + "!" + range.getA1Notation(),
         fullRef: "'" + range.getSheet().getName() + "'!" + range.getA1Notation(),
-        value: range.getDisplayValue()
+        value: range.getDisplayValue(),
+        cellFormula: formula
       });
     }
   });
@@ -658,6 +661,11 @@ function findDependents(ss, targetCell, results) {
   };
 }
 
-function getVal(ss, ref) {
-  try { return ss.getRange(ref).getDisplayValue(); } catch(e) { return "N/A"; }
+function getCellInfo(ss, ref) {
+  try {
+    var cell = ss.getRange(ref);
+    return { value: cell.getDisplayValue(), formula: cell.getFormula() || "" };
+  } catch(e) {
+    return { value: "N/A", formula: "" };
+  }
 }

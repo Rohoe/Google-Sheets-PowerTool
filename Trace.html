@@ -10,6 +10,8 @@
       td { padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; }
       tr.selected { background-color: #e8f0fe; font-weight: bold; border-left: 4px solid #1a73e8; }
       .val { text-align: right; color: #0d652d; font-family: monospace; }
+      .cell-formula { font-size: 11px; color: #666; font-family: monospace; padding: 2px 8px 6px; border-bottom: 1px solid #eee; display: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 460px; }
+      tr.selected + tr.formula-row .cell-formula { display: block; }
       .instructions { font-size: 10px; color: #888; margin-top: 10px; text-align: center; }
     </style>
   </head>
@@ -44,19 +46,31 @@
         data.precedents.forEach((prec, i) => {
           let tr = document.createElement('tr');
           tr.id = 'row-' + i;
-          
+
           let tdRef = document.createElement('td');
           tdRef.textContent = prec.shortRef;
-          
+
           let tdVal = document.createElement('td');
           tdVal.className = 'val';
           tdVal.textContent = prec.value;
-          
+
           tr.appendChild(tdRef);
           tr.appendChild(tdVal);
-          
           tr.onclick = () => selectRow(i);
           tbody.appendChild(tr);
+
+          // Formula subtitle row (visible only when selected)
+          if (prec.cellFormula) {
+            let fRow = document.createElement('tr');
+            fRow.className = 'formula-row';
+            let fTd = document.createElement('td');
+            fTd.colSpan = 2;
+            fTd.className = 'cell-formula';
+            fTd.textContent = prec.cellFormula;
+            fTd.title = prec.cellFormula;
+            fRow.appendChild(fTd);
+            tbody.appendChild(fRow);
+          }
         });
         selectRow(0);
       }
