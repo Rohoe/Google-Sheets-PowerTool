@@ -12,8 +12,9 @@
       td:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 0; width: 70%; }
       td.val { text-align: right; color: #0d652d; font-family: monospace; white-space: nowrap; width: 30%; }
       tr.selected { background-color: #e8f0fe; font-weight: bold; border-left: 4px solid #1a73e8; }
-      .cell-formula { font-size: 10px; color: #666; font-family: monospace; padding: 2px 8px 4px; border-bottom: 1px solid #eee; display: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      tr.selected + tr.formula-row .cell-formula { display: block; }
+      tr.formula-row { display: none; }
+      tr.selected + tr.formula-row { display: table-row; }
+      .cell-formula { font-size: 10px; color: #666; font-family: monospace; padding: 2px 8px 4px; border-bottom: 1px solid #eee; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 1px; }
       .instructions { font-size: 9px; color: #888; margin-top: 6px; text-align: center; flex-shrink: 0; }
       #loading-overlay { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(241,243,244,0.7); z-index: 10; justify-content: center; align-items: center; }
       #loading-overlay.active { display: flex; }
