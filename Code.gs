@@ -19,12 +19,13 @@ function onHomepage(e) {
 function onSheetsHomepage(e) {
   var builder = CardService.newCardBuilder();
   var props = PropertiesService.getUserProperties();
+  var allProps = props.getProperties();
 
-  var defFill = props.getProperty('c_fill') || DEFAULTS.c_fill;
-  var defFont = props.getProperty('c_font') || DEFAULTS.c_font;
-  var defNum  = props.getProperty('c_num')  || DEFAULTS.c_num;
-  var defCur  = props.getProperty('c_cur')  || DEFAULTS.c_cur;
-  var defPer  = props.getProperty('c_per')  || DEFAULTS.c_per;
+  var defFill = allProps['c_fill'] || DEFAULTS.c_fill;
+  var defFont = allProps['c_font'] || DEFAULTS.c_font;
+  var defNum  = allProps['c_num']  || DEFAULTS.c_num;
+  var defCur  = allProps['c_cur']  || DEFAULTS.c_cur;
+  var defPer  = allProps['c_per']  || DEFAULTS.c_per;
 
   // SECTION 1: FORMULA AUDITING
   var auditSection = CardService.newCardSection().setHeader("Formula Auditing");
@@ -79,7 +80,7 @@ function onSheetsHomepage(e) {
 
   // Helper function to extract array of 4 formats
   function getArr(key, defaultStr) {
-    var saved = props.getProperty(key);
+    var saved = allProps[key] !== undefined ? allProps[key] : null;
     var str = saved !== null ? saved : defaultStr;
     var arr = str.split('|').map(function(s) { return s.trim(); });
     return [arr[0] || '', arr[1] || '', arr[2] || '', arr[3] || ''];
