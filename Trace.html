@@ -2,17 +2,19 @@
 <html>
   <head>
     <style>
-      body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 10px; background: #f1f3f4; overflow: hidden; }
-      #mode-indicator { font-size: 10px; font-weight: bold; color: #1a73e8; margin-bottom: 5px; letter-spacing: 1px; }
-      #formula-box { background: white; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; font-family: monospace; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; min-height: 40px;}
+      body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 8px; background: #f1f3f4; overflow: hidden; display: flex; flex-direction: column; height: calc(100vh - 16px); box-sizing: border-box; }
+      #mode-indicator { font-size: 9px; font-weight: bold; color: #1a73e8; margin-bottom: 3px; letter-spacing: 1px; flex-shrink: 0; }
+      #formula-box { background: white; border: 1px solid #ccc; padding: 8px; margin-bottom: 8px; font-family: monospace; font-size: 12px; border-radius: 4px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; min-height: 20px; max-height: 60px; flex-shrink: 0; }
       .highlight { background-color: #fce8b2; font-weight: bold; padding: 0 2px; border-radius: 2px; }
-      table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-      td { padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; }
+      #table-wrap { flex: 1; overflow-y: auto; min-height: 0; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+      table { width: 100%; border-collapse: collapse; background: white; }
+      td { padding: 6px 8px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 12px; }
+      td:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 0; width: 70%; }
+      td.val { text-align: right; color: #0d652d; font-family: monospace; white-space: nowrap; width: 30%; }
       tr.selected { background-color: #e8f0fe; font-weight: bold; border-left: 4px solid #1a73e8; }
-      .val { text-align: right; color: #0d652d; font-family: monospace; }
-      .cell-formula { font-size: 11px; color: #666; font-family: monospace; padding: 2px 8px 6px; border-bottom: 1px solid #eee; display: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 460px; }
+      .cell-formula { font-size: 10px; color: #666; font-family: monospace; padding: 2px 8px 4px; border-bottom: 1px solid #eee; display: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       tr.selected + tr.formula-row .cell-formula { display: block; }
-      .instructions { font-size: 10px; color: #888; margin-top: 10px; text-align: center; }
+      .instructions { font-size: 9px; color: #888; margin-top: 6px; text-align: center; flex-shrink: 0; }
       #loading-overlay { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(241,243,244,0.7); z-index: 10; justify-content: center; align-items: center; }
       #loading-overlay.active { display: flex; }
       .spinner { width: 24px; height: 24px; border: 3px solid #ddd; border-top-color: #1a73e8; border-radius: 50%; animation: spin 0.6s linear infinite; }
@@ -27,7 +29,7 @@
     <div id="focus-prompt"><span>Click here to enable keyboard navigation</span></div>
     <div id="mode-indicator">MODE: LOADING...</div>
     <div id="formula-box">Initializing...</div>
-    <table id="prec-table"><tbody id="prec-body"></tbody></table>
+    <div id="table-wrap"><table id="prec-table"><tbody id="prec-body"></tbody></table></div>
     <div class="instructions">&uarr;&darr; Navigate | &rarr; Trace Deep | &larr; Step Back<br>Enter to Finish | Esc to Cancel</div>
 
     <script>
@@ -103,7 +105,7 @@
         if (prevRow) prevRow.classList.remove('selected');
         selectedIndex = index;
         const currentRow = document.getElementById('row-' + selectedIndex);
-        if (currentRow) currentRow.classList.add('selected');
+        if (currentRow) { currentRow.classList.add('selected'); currentRow.scrollIntoView({ block: 'nearest' }); }
         
         const target = traceData.precedents[selectedIndex];
         if (selectedIndex !== 0 && traceData.mode === 'Precedents') {

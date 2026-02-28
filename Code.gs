@@ -556,8 +556,8 @@ function extractPrecedents(formula) {
 function launchTraceModal(e) {
   PropertiesService.getUserProperties().setProperty('trace_mode', 'precedents');
   var html = HtmlService.createHtmlOutputFromFile('Trace')
-      .setWidth(500)
-      .setHeight(400);
+      .setWidth(380)
+      .setHeight(300);
   SpreadsheetApp.getUi().showModelessDialog(html, 'Trace In');
 }
 
@@ -617,15 +617,6 @@ function getDeepTraceData(targetA1) {
 function goToPrecedent(params) {
   var targetA1 = params.targetA1;
   var ss = SpreadsheetApp.getActive();
-  
-  // SAVE HISTORY BEFORE JUMPING
-  try {
-    var currentCell = ss.getActiveCell();
-    var currentLoc = "'" + currentCell.getSheet().getName() + "'!" + currentCell.getA1Notation();
-    pushHistory(currentLoc);
-  } catch (e) {
-    console.error("Failed to save history: " + e);
-  }
 
   try {
     var range = ss.getRange(targetA1);
@@ -634,7 +625,6 @@ function goToPrecedent(params) {
       targetSheet.activate();
     }
     range.activate();
-    SpreadsheetApp.flush(); 
   } catch (err) {
     console.error("Jump failed: " + err);
   }
@@ -644,8 +634,8 @@ function goToPrecedent(params) {
 function launchDependentsModal() {
   PropertiesService.getUserProperties().setProperty('trace_mode', 'dependents');
   var html = HtmlService.createHtmlOutputFromFile('Trace')
-      .setWidth(500)
-      .setHeight(400);
+      .setWidth(380)
+      .setHeight(300);
   SpreadsheetApp.getUi().showModelessDialog(html, 'Trace Out (Dependents)');
 }
 
