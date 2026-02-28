@@ -50,7 +50,8 @@
       });
 
       window.onload = function() {
-        google.script.run.withSuccessHandler(renderUI).getTraceData();
+        var initialData = <?!= initialData ?>;
+        renderUI(initialData);
       };
 
       function renderUI(data) {

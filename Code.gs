@@ -560,9 +560,10 @@ function extractPrecedents(formula) {
 // 1. Sidebar button now launches a floating HTML window
 function launchTraceModal(e) {
   PropertiesService.getUserProperties().setProperty('trace_mode', 'precedents');
-  var html = HtmlService.createHtmlOutputFromFile('Trace')
-      .setWidth(380)
-      .setHeight(300);
+  var data = getTraceData();
+  var template = HtmlService.createTemplateFromFile('Trace');
+  template.initialData = JSON.stringify(data);
+  var html = template.evaluate().setWidth(380).setHeight(300);
   SpreadsheetApp.getUi().showModelessDialog(html, 'Trace In');
 }
 
@@ -638,9 +639,10 @@ function goToPrecedent(params) {
 // Launches the Trace Dependents version of the modal
 function launchDependentsModal() {
   PropertiesService.getUserProperties().setProperty('trace_mode', 'dependents');
-  var html = HtmlService.createHtmlOutputFromFile('Trace')
-      .setWidth(380)
-      .setHeight(300);
+  var data = getTraceData();
+  var template = HtmlService.createTemplateFromFile('Trace');
+  template.initialData = JSON.stringify(data);
+  var html = template.evaluate().setWidth(380).setHeight(300);
   SpreadsheetApp.getUi().showModelessDialog(html, 'Trace Out (Dependents)');
 }
 
