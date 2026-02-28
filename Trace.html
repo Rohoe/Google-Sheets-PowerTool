@@ -13,9 +13,14 @@
       .cell-formula { font-size: 11px; color: #666; font-family: monospace; padding: 2px 8px 6px; border-bottom: 1px solid #eee; display: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 460px; }
       tr.selected + tr.formula-row .cell-formula { display: block; }
       .instructions { font-size: 10px; color: #888; margin-top: 10px; text-align: center; }
+      #loading-overlay { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(241,243,244,0.7); z-index: 10; justify-content: center; align-items: center; }
+      #loading-overlay.active { display: flex; }
+      .spinner { width: 24px; height: 24px; border: 3px solid #ddd; border-top-color: #1a73e8; border-radius: 50%; animation: spin 0.6s linear infinite; }
+      @keyframes spin { to { transform: rotate(360deg); } }
     </style>
   </head>
   <body>
+    <div id="loading-overlay" class="active"><div class="spinner"></div></div>
     <div id="mode-indicator">MODE: LOADING...</div>
     <div id="formula-box">Initializing...</div>
     <table id="prec-table"><tbody id="prec-body"></tbody></table>
@@ -25,12 +30,17 @@
       let traceData = null;
       let selectedIndex = 0;
       let historyStack = [];
+      const overlay = document.getElementById('loading-overlay');
+
+      function showLoading() { overlay.classList.add('active'); }
+      function hideLoading() { overlay.classList.remove('active'); }
 
       window.onload = function() {
         google.script.run.withSuccessHandler(renderUI).getTraceData();
       };
 
       function renderUI(data) {
+        hideLoading();
         if (data.error) {
           document.getElementById('formula-box').innerText = data.error;
           document.getElementById('mode-indicator').innerText = "ERROR";
@@ -100,15 +110,16 @@
 
       function goBack() {
         if (historyStack.length > 0) {
+          showLoading();
           const lastRef = historyStack.pop();
           google.script.run.withSuccessHandler(renderUI).getDeepTraceData(lastRef);
         } else {
-          selectRow(0); // If no history, just go to current top of list
+          selectRow(0);
         }
       }
 
       function goDeep() {
-        // Save the current home reference to the stack before we dive in
+        showLoading();
         const currentHome = traceData.precedents[0].fullRef;
         historyStack.push(currentHome);
         const target = traceData.precedents[selectedIndex].fullRef;
